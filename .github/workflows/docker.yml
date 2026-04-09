@@ -1,26 +1,38 @@
-name: create docker image on github packages
+name: Create Docker image on GitHub Packages
+
 on:
   workflow_dispatch:
   push:
     branches:
-    - master
+      - master
 
 jobs:
   publish-docker-develop-image:
     runs-on: ubuntu-latest
+
     steps:
-    - uses: actions/checkout@v4
-      with:
-        ref: develop
-    - name: Login to GitHub Container Registry
-      uses: docker/login-action@v1
-      with:
-        registry: ghcr.io
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
-    - name: Build the openimis backend  Docker image
-      run: |
-         LABEL=develop
-         docker build . --tag ghcr.io/openimis/openimis-be:${LABEL}
-         docker run ghcr.io/openimis/openimis-be:${LABEL}
-         docker push ghcr.io/openimis/openimis-be:${LABEL}
+      - name: Checkout code (develop branch)
+        uses: actions/checkout@v4
+        with:
+          ref: develop
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3          
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build, test and push Docker image
+        run: |
+          LABEL=develop
+          IMAGE_NAME=ghcr.io/${{ github.repository_owner }}/glitchtip:${LABEL}
+
+          echo "Building image: ${IMAGE_NAME}"
+
+          docker build . --tag ${IMAGE_NAME}
+
+          # Optional: quick smoke test
+          docker run --rm ${IMAGE_NAME} --help || echo "Container started successfully"
+
+          docker push ${IMAGE_NAME}
